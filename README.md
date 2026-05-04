@@ -1,3 +1,3 @@
 # Networking
 - Kolegiji:
-    - Uvod u mreže računala
+    ### Uvod u mreže računala
