@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kviz – Računalne mreže</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f0f2f8;
+    --surface: #ffffff;
+    --card: #ffffff;
+    --border: #c8cde0;
+    --accent: #3a28c8;
+    --accent2: #007a50;
+    --wrong: #c8001e;
+    --text: #0d0e1a;
+    --muted: #505268;
+    --mono: 'Space Mono', monospace;
+    --sans: 'Syne', sans-serif;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px 60px;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(58,40,200,0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(58,40,200,0.05) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .wrap { position: relative; z-index: 1; width: 100%; max-width: 720px; }
+  header { text-align: center; margin-bottom: 40px; padding-top: 20px; }
+  .logo { font-family: var(--mono); font-size: 11px; letter-spacing: 4px; color: var(--accent); text-transform: uppercase; margin-bottom: 12px; }
+  header h1 { font-size: clamp(24px, 5vw, 40px); font-weight: 800; line-height: 1.1; background: linear-gradient(135deg, #0d0e1a 30%, var(--accent)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .progress-bar { height: 3px; background: var(--border); border-radius: 2px; margin-bottom: 12px; overflow: hidden; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 2px; transition: width 0.4s cubic-bezier(.4,0,.2,1); }
+  .progress-meta { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 11px; color: var(--muted); margin-bottom: 28px; }
+  .score-badge { color: var(--accent2); font-weight: 700; }
+  .card { background: var(--card); border: 1px solid var(--border); box-shadow: 0 2px 12px rgba(0,0,0,0.07); border-radius: 16px; padding: 32px; margin-bottom: 20px; position: relative; overflow: hidden; animation: slideIn .35s cubic-bezier(.4,0,.2,1); }
+  @keyframes slideIn { from { opacity:0; transform: translateY(16px); } to { opacity:1; transform: translateY(0); } }
+  .card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 2px 2px 0 0; }
+  .q-number { font-family: var(--mono); font-size: 11px; color: var(--accent); letter-spacing: 2px; margin-bottom: 16px; }
+  .q-text { font-size: 17px; font-weight: 600; line-height: 1.6; margin-bottom: 28px; white-space: pre-wrap; }
+  .q-text .mono-block { font-family: var(--mono); font-size: 13px; color: var(--accent2); background: rgba(0,122,80,0.06); border: 1px solid rgba(0,122,80,0.20); border-radius: 8px; padding: 10px 14px; display: block; margin: 12px 0; }
+  .options { display: flex; flex-direction: column; gap: 10px; }
+  .option { background: var(--surface); border: 1px solid var(--border); box-shadow: 0 2px 12px rgba(0,0,0,0.07); border-radius: 10px; padding: 14px 18px; cursor: pointer; display: flex; align-items: center; gap: 14px; transition: border-color .2s, background .2s, transform .15s; font-size: 15px; }
+  .option:hover:not(.disabled) { border-color: var(--accent); background: rgba(58,40,200,0.07); transform: translateX(4px); }
+  .option-letter { font-family: var(--mono); font-size: 11px; color: var(--muted); background: var(--border); border-radius: 5px; padding: 3px 7px; flex-shrink: 0; transition: background .2s, color .2s; }
+  .option.correct { border-color: var(--accent2); background: rgba(0,122,80,0.08); }
+  .option.correct .option-letter { background: var(--accent2); color: #000; }
+  .option.wrong { border-color: var(--wrong); background: rgba(200,0,30,0.08); }
+  .option.wrong .option-letter { background: var(--wrong); color: #fff; }
+  .option.disabled { cursor: default; pointer-events: none; }
+  .open-answer { display: flex; flex-direction: column; gap: 12px; }
+  .open-answer input { background: var(--surface); border: 1px solid var(--border); box-shadow: 0 2px 12px rgba(0,0,0,0.07); border-radius: 10px; padding: 14px 18px; font-family: var(--mono); font-size: 15px; color: var(--text); outline: none; transition: border-color .2s; }
+  .open-answer input:focus { border-color: var(--accent); }
+  .open-answer input.correct { border-color: var(--accent2); background: rgba(0,122,80,0.08); }
+  .open-answer input.wrong { border-color: var(--wrong); background: rgba(200,0,30,0.08); }
+  .submit-btn { background: var(--accent); color: #fff; border: none; border-radius: 10px; padding: 14px 24px; font-family: var(--sans); font-size: 15px; font-weight: 600; cursor: pointer; transition: opacity .2s, transform .15s; }
+  .submit-btn:hover { opacity: .85; transform: translateY(-1px); }
+  .submit-btn:disabled { opacity: .4; cursor: default; transform: none; }
+  .feedback { margin-top: 16px; padding: 14px 18px; border-radius: 10px; font-size: 14px; font-weight: 600; display: none; align-items: center; gap: 10px; }
+  .feedback.show { display: flex; animation: fadeIn .3s ease; }
+  .feedback.ok { background: rgba(0,122,80,0.10); border: 1px solid rgba(0,122,80,0.35); color: var(--accent2); }
+  .feedback.bad { background: rgba(200,0,30,0.08); border: 1px solid rgba(200,0,30,0.35); color: var(--wrong); }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+
+  /* Nav buttons */
+  .nav-btns { display: flex; gap: 10px; margin-bottom: 0; }
+  .prev-btn { flex: 0 0 auto; background: transparent; border: 1px solid var(--border); box-shadow: 0 2px 12px rgba(0,0,0,0.07); color: var(--muted); border-radius: 10px; padding: 14px 20px; font-family: var(--sans); font-size: 15px; font-weight: 600; cursor: pointer; transition: border-color .2s, color .2s, transform .15s; display: none; }
+  .prev-btn.show { display: block; animation: fadeIn .3s ease; }
+  .prev-btn:hover { border-color: var(--accent); color: var(--accent); transform: translateY(-1px); }
+  .next-btn { flex: 1; background: transparent; border: 1px solid var(--accent); color: var(--accent); border-radius: 10px; padding: 14px; font-family: var(--sans); font-size: 15px; font-weight: 600; cursor: pointer; letter-spacing: 1px; transition: background .2s, color .2s, transform .15s; display: none; }
+  .next-btn.show { display: block; animation: fadeIn .3s ease; }
+  .next-btn:hover { background: var(--accent); color: #fff; transform: translateY(-1px); }
+
+  /* Results */
+  .results { text-align: center; padding: 48px 32px 32px; display: none; }
+  .results.show { display: block; animation: slideIn .4s ease; }
+  .big-score { font-family: var(--mono); font-size: clamp(48px, 12vw, 80px); font-weight: 700; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; line-height: 1; margin-bottom: 8px; }
+  .final-msg { color: var(--muted); font-size: 16px; margin-bottom: 32px; }
+  .results-btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 32px; }
+  .restart-btn { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; border: none; border-radius: 12px; padding: 16px 40px; font-family: var(--sans); font-size: 16px; font-weight: 700; cursor: pointer; transition: opacity .2s, transform .15s; }
+  .restart-btn:hover { opacity: .85; transform: translateY(-2px); }
+  .review-toggle-btn { background: transparent; border: 1px solid var(--accent); color: var(--accent); border-radius: 12px; padding: 16px 32px; font-family: var(--sans); font-size: 16px; font-weight: 700; cursor: pointer; transition: background .2s, color .2s, transform .15s; }
+  .review-toggle-btn:hover { background: var(--accent); color: #fff; transform: translateY(-2px); }
+
+  /* Review */
+  .review { display: none; text-align: left; }
+  .review.show { display: block; }
+  .review-title { font-family: var(--mono); font-size: 11px; letter-spacing: 3px; color: var(--muted); text-transform: uppercase; margin-bottom: 20px; }
+  .review-item { background: var(--surface); border: 1px solid var(--border); box-shadow: 0 2px 12px rgba(0,0,0,0.07); border-left: 3px solid var(--border); border-radius: 12px; padding: 18px 20px; margin-bottom: 10px; }
+  .review-item.ok { border-left-color: var(--accent2); }
+  .review-item.bad { border-left-color: var(--wrong); }
+  .review-status { font-size: 12px; font-weight: 700; margin-bottom: 8px; font-family: var(--mono); }
+  .review-status.ok { color: var(--accent2); }
+  .review-status.bad { color: var(--wrong); }
+  .review-q { font-size: 14px; font-weight: 600; margin-bottom: 10px; line-height: 1.5; white-space: pre-wrap; }
+  .review-q .mono-block { font-family: var(--mono); font-size: 11px; color: var(--accent2); background: rgba(0,122,80,0.06); border: 1px solid rgba(0,122,80,0.20); border-radius: 6px; padding: 5px 10px; display: block; margin: 5px 0; }
+  .review-answers { font-family: var(--mono); font-size: 12px; display: flex; flex-direction: column; gap: 4px; }
+  .review-correct-ans { color: var(--accent2); }
+  .review-wrong-ans { color: var(--wrong); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">TVZ · Računalne mreže</div>
+    <h1>Kviz za kolokvij</h1>
+  </header>
+
+  <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+  <div class="progress-meta">
+    <span id="progressText">Pitanje 1 / 101</span>
+    <span>Rezultat: <span class="score-badge" id="scoreText">0</span></span>
+  </div>
+
+  <div class="card" id="questionCard">
+    <div class="q-number" id="qNumber">PITANJE 01</div>
+    <div class="q-text" id="qText"></div>
+    <div id="qBody"></div>
+    <div class="feedback" id="feedback"></div>
+  </div>
+
+  <div class="nav-btns">
+    <button class="prev-btn" id="prevBtn" onclick="prevQuestion()">← Prethodno</button>
+    <button class="next-btn" id="nextBtn" onclick="nextQuestion()">Sljedeće pitanje →</button>
+  </div>
+
+  <div class="card results" id="results">
+    <div class="big-score" id="finalScore"></div>
+    <p class="final-msg" id="finalMsg"></p>
+    <div class="results-btns">
+      <button class="restart-btn" onclick="restart()">Ponovi kviz</button>
+      <button class="review-toggle-btn" id="reviewToggleBtn" onclick="toggleReview()">Pregledaj odgovore</button>
+    </div>
+    <div class="review" id="reviewSection">
+      <div class="review-title">Pregled svih pitanja</div>
+      <div id="reviewList"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const ALL_QUESTIONS = [
+  {t:"Koji raspon pripada A klasi?",o:["128.0.0.0 – 191.255.255.255","224.0.0.0 – 239.255.255.255","1.0.0.0 – 126.255.255.255","192.0.0.0 – 223.255.255.255"],a:2},
+  {t:"Koliko mrežnih bitova ima A klasa?",o:["16","8","32","24"],a:1},
+  {t:"Koliko host bitova ima A klasa?",o:["16","8","32","24"],a:3},
+  {t:"Koja je zadana maska A klase?",o:["255.255.255.128","255.255.0.0","255.255.255.0","255.0.0.0"],a:3},
+  {t:"Koji CIDR zapis odgovara zadanoj maski A klase?",o:["/24","/32","/16","/8"],a:3},
+  {t:"Koji raspon pripada B klasi?",o:["1.0.0.0 – 126.255.255.255","224.0.0.0 – 239.255.255.255","192.0.0.0 – 223.255.255.255","128.0.0.0 – 191.255.255.255"],a:3},
+  {t:"Koliko mrežnih bitova ima B klasa?",o:["32","8","24","16"],a:3},
+  {t:"Koliko host bitova ima B klasa?",o:["8","32","24","16"],a:3},
+  {t:"Koja je zadana maska B klase?",o:["255.255.255.128","255.255.255.0","255.255.0.0","255.0.0.0"],a:2},
+  {t:"Koji CIDR zapis odgovara zadanoj maski B klase?",o:["/24","/8","/32","/16"],a:3},
+  {t:"Koji raspon pripada C klasi?",o:["128.0.0.0 – 191.255.255.255","224.0.0.0 – 239.255.255.255","192.0.0.0 – 223.255.255.255","1.0.0.0 – 126.255.255.255"],a:2},
+  {t:"Koliko mrežnih bitova ima C klasa?",o:["16","32","24","8"],a:2},
+  {t:"Koliko host bitova ima C klasa?",o:["2","6","4","8"],a:3},
+  {t:"Koja je zadana maska C klase?",o:["255.0.0.0","255.255.0.0","255.255.255.0","255.255.255.128"],a:2},
+  {t:"Koji CIDR zapis odgovara zadanoj maski C klase?",o:["/16","/32","/24","/8"],a:2},
+  {t:"Koja maska odgovara /26?",o:["255.255.255.240","255.255.255.128","255.255.255.192","255.255.255.224"],a:2},
+  {t:"Koja maska odgovara /27?",o:["255.255.255.240","255.255.255.224","255.255.255.248","255.255.255.192"],a:1},
+  {t:"Koja maska odgovara /28?",o:["255.255.255.248","255.255.255.224","255.255.255.192","255.255.255.240"],a:3},
+  {t:"Koja maska odgovara /29?",o:["255.255.255.248","255.255.255.240","255.255.255.224","255.255.255.252"],a:0},
+  {t:"Koliko iskoristivih hostova ima /25?",o:["126","64","254","128"],a:0},
+  {t:"Koliko iskoristivih hostova ima /26?",o:["30","62","64","126"],a:1},
+  {t:"Koliko iskoristivih hostova ima /27?",o:["126","30","14","62"],a:1},
+  {t:"Koliko iskoristivih hostova ima /28?",o:["30","62","14","16"],a:2},
+  {t:"Koliko iskoristivih hostova ima /29?",o:["2","4","6","8"],a:2},
+  {t:"Koliko iskoristivih hostova ima /30 mreža koja se često koristi u WAN vezama?",o:["4","2","14","6"],a:1},
+  {t:"Koliko iskoristivih hostova ima /23?",o:["512","510","1022","254"],a:1},
+  {t:"Broadcast za 192.168.1.128/27 je:",o:[".143",".191",".159",".255"],a:2},
+  {t:"Broadcast za 192.168.1.0/26 je:",o:[".127",".63",".31",".255"],a:1},
+  {t:"Koja je broadcast adresa za 192.168.1.96/27?",o:[".127",".126",".119",".111"],a:0},
+  {t:"Broadcast za 10.0.0.32/28 je:",o:[".48",".31",".63",".47"],a:3},
+  {t:"Koji je prvi iskoristivi host mreže 192.168.1.128/27?",o:[".130",".131",".129",".128"],a:2},
+  {t:"Koji je zadnji iskoristivi host mreže 192.168.1.128/27?",o:[".158",".160",".161",".159"],a:0},
+  {t:"Koji je prvi iskoristivi host za 192.168.1.96/27?",o:[".96",".98",".99",".97"],a:3},
+  {t:"Koji je zadnji iskoristivi host za 192.168.1.96/27?",o:[".127",".128",".126",".125"],a:2},
+  {t:"Koji je prvi iskoristivi host za 192.168.1.64/26?",o:[".66",".65",".64",".67"],a:1},
+  {t:"Koji je zadnji iskoristivi host za 192.168.1.64/27?",o:[".97",".96",".95",".94"],a:3},
+  {t:"Koji je prvi iskoristivi host za 10.0.0.32/28?",o:[".33",".32",".35",".34"],a:0},
+  {t:"Koji je zadnji iskoristivi host za 10.0.0.32/28?",o:[".45",".47",".48",".46"],a:3},
+  {t:"Koja je mrežna adresa za host 192.168.1.70/26?",o:["192.168.1.64","192.168.1.128","192.168.1.192","192.168.1.0"],a:0},
+  {t:"Koja maska je potrebna za 2 iskoristiva hosta?",o:["/30","/27","/29","/28"],a:0},
+  {t:"Koja maska je potrebna za 6 iskoristivih hostova?",o:["/30","/27","/28","/29"],a:3},
+  {t:"Koja maska je potrebna za 14 iskoristivih hostova?",o:["/29","/28","/30","/27"],a:1},
+  {t:"Koja maska je potrebna za 30 iskoristivih hostova?",o:["/27","/29","/26","/28"],a:0},
+  {t:"Koja maska je potrebna za 62 iskoristiva hosta?",o:["/26","/25","/28","/27"],a:0},
+  {t:"Koja maska je potrebna za 126 iskoristivih hostova?",o:["/26","/25","/24","/27"],a:1},
+  {t:"Koja maska je dovoljna za 50 hostova?",o:["/28","/26","/27","/25"],a:1},
+  {t:"Koja maska je dovoljna za 100 hostova?",o:["/26","/28","/27","/25"],a:3},
+  {t:"Koja maska omogućuje najmanje 500 hostova?",o:["/24","/25","/26","/23"],a:3},
+  {t:"Nakon subneta 192.168.1.0/26, sljedeći subnet je:",o:["192.168.1.128","192.168.1.96","192.168.1.64","192.168.1.32"],a:2},
+  {t:"Nakon subneta 192.168.1.64/27, sljedeći subnet je:",o:["192.168.1.80","192.168.1.96","192.168.1.128","192.168.1.72"],a:1},
+  {t:"Nakon subneta 10.0.0.32/28, sljedeći subnet je:",o:["10.0.0.56","10.0.0.40","10.0.0.64","10.0.0.48"],a:3},
+  {t:"Koliki je block size za /26?",o:["32","128","16","64"],a:3},
+  {t:"Koliki je block size za /27?",o:["8","16","32","64"],a:2},
+  {t:"Koliki je block size za /28?",o:["32","16","8","4"],a:1},
+  {t:"Koliki je block size za /29?",o:["8","4","16","32"],a:0},
+  {t:"Koliki je block size za /30?",o:["8","2","4","16"],a:2},
+  {t:"Koliko podmreža daje /30 koji je nastao iz /24 mreže?",o:["32","64","256","128"],a:1},
+  {t:"Koliko podmreža daje /28 koji je nastao iz /24 mreže?",o:["64","8","32","16"],a:3},
+  {t:"Koliko podmreža daje /29 koji je nastao iz /24 mreže?",o:["32","16","64","128"],a:0},
+  {t:"/24 podijeljen na 4 podmreže daje koju masku?",o:["/26","/27","/25","/28"],a:0},
+  {t:"/24 podijeljen na 8 podmreža daje koju masku?",o:["/26","/27","/25","/28"],a:1},
+  {t:"/24 podijeljen na 16 podmreža daje koju masku?",o:["/27","/28","/26","/29"],a:1},
+  {t:"Koliko podmreža dobivamo posuđivanjem 2 bita?",o:["8","2","6","4"],a:3},
+  {t:"Koliko podmreža dobivamo posuđivanjem 3 bita?",o:["4","6","8","16"],a:2},
+  {t:"Koliko podmreža dobivamo posuđivanjem 4 bita?",o:["32","16","8","64"],a:1},
+  {t:"Koliko host bitova ostaje kod /26?",o:["4","2","8","6"],a:3},
+  {t:"Koja maska je dovoljna za VLSM mrežu od 20 hostova?",o:["/28","/27","/25","/26"],a:1},
+  {t:"Koja maska je dovoljna za VLSM mrežu od 50 hostova?",o:["/24","/26","/27","/25"],a:1},
+  {t:"Glavna prednost VLSM subnetiranja je:",o:["jednostavniji routing","bolje iskorištenje IP adresa","nema subnet maski","manje mreža"],a:1},
+  {t:"Kod VLSM subnetiranja prvo se dodjeljuje:",o:["najveća mreža","WAN mreža","broadcast adresa","najmanja mreža"],a:0},
+  {t:"Kod VLSM-a podmreže:",o:["moraju biti iste veličine","mogu biti različite veličine","nemaju broadcast","imaju uvijek /24 masku"],a:1},
+  {t:"Što znači VLSM?",o:["Variable Local Subnet Method","Variable Length Subnet Masking","Virtual Length Subnet Mask","Virtual Local Subnet Method"],a:1},
+  {t:"Za WAN vezu s 2 hosta najčešće se koristi:",o:["/29","/28","/30","/27"],a:2},
+  {t:"Mreža 192.168.1.0/24 dodijeljena je za 60 hostova. Koji subnet se koristi?",o:["/26","/29","/28","/27"],a:0},
+  {t:"IP adresa u binarnom obliku je:\n10101100.00010000.00000101.11111110\nNa crtu upiši IP adresu u dekadskom obliku.",open:true,a:"172.16.5.254"},
+  {t:"IP adresa u binarnom obliku je:\n11000000.10101000.00001010.01100011\nNa crtu upiši IP adresu u dekadskom obliku.",open:true,a:"192.168.10.99"},
+  {t:"Subnet maska u binarnom obliku je:\n11111111.11111111.11111111.11000000\nNa crtu upiši odgovarajući CIDR zapis.",open:true,a:"/26"},
+  {t:"Subnet maska u binarnom obliku je:\n11111111.11111111.11111111.11110000\nNa crtu upiši odgovarajući CIDR zapis.",open:true,a:"/28"},
+  {t:"Subnet maska u binarnom obliku je:\n11111111.11111111.11111111.11111000\nNa crtu upiši subnet masku u dekadskom obliku.",open:true,a:"255.255.255.248"},
+  {t:"Subnet maska u binarnom obliku je:\n11111111.11111111.11111111.11100000\nNa crtu upiši subnet masku u dekadskom obliku.",open:true,a:"255.255.255.224"},
+  {t:"Subnet maska u binarnom obliku je:\n11111111.11111111.11111111.10000000\nNa crtu upiši subnet masku u dekadskom obliku.",open:true,a:"255.255.255.128"},
+  {t:"Zadana je subnetirana mreža 192.168.1.64/27. Na crtu upiši sljedeću mrežnu adresu podmreže.",open:true,a:"192.168.1.96"},
+  {t:"Zadana je subnetirana mreža 10.0.0.112/28. Na crtu upiši sljedeću mrežnu adresu podmreže.",open:true,a:"10.0.0.128"},
+  {t:"Mreža 192.168.5.144/28 je subnetirana. Na crtu upiši broadcast adresu.",open:true,a:"192.168.5.159"},
+  {t:"Mreža 192.168.15.96/27 je subnetirana. Na crtu upiši broadcast adresu te podmreže.",open:true,a:"192.168.15.127"},
+  {t:"Mreža 192.168.100.128/26 je subnetirana. Na crtu upiši broadcast adresu.",open:true,a:"192.168.100.191"},
+  {t:"Mreža 192.168.1.200/30 je subnetirana. Na crtu upiši broadcast adresu.",open:true,a:"192.168.1.203"},
+  {t:"Mreža 192.168.1.200/30 je subnetirana. Na crtu upiši prvi iskoristivi host.",open:true,a:"192.168.1.201"},
+  {t:"Mreža 192.168.1.200/30 je subnetirana. Na crtu upiši zadnji iskoristivi host.",open:true,a:"192.168.1.202"},
+  {t:"Mreža 10.10.10.64/28 je subnetirana. Na crtu upiši zadnji iskoristivi host.",open:true,a:"10.10.10.78"},
+  {t:"Mreža 10.1.1.72/29 je subnetirana. Na crtu upiši broadcast adresu.",open:true,a:"10.1.1.79"},
+  {t:"Mreža 172.20.1.32/27 je subnetirana. Na crtu upiši zadnji iskoristivi host.",open:true,a:"172.20.1.62"},
+  {t:"Mreža 172.16.5.40/29 je subnetirana. Na crtu upiši prvi iskoristivi host.",open:true,a:"172.16.5.41"},
+  {t:"IP adresa 192.168.1.142/28 pripada određenoj podmreži. Na crtu upiši mrežnu adresu te podmreže.",open:true,a:"192.168.1.128"},
+  {t:"IP adresa 192.168.50.190/26 pripada određenoj podmreži. Na crtu upiši mrežnu adresu.",open:true,a:"192.168.50.128"},
+  {t:"IP adresa 192.168.10.94/27 pripada određenoj podmreži. Na crtu upiši mrežnu adresu te podmreže.",open:true,a:"192.168.10.64"},
+  {t:"U VLSM subnetiranju podmreža mora podržati najmanje 90 iskoristivih hostova. Na crtu upiši najmanji odgovarajući CIDR zapis.",open:true,a:"/25"},
+  {t:"U VLSM subnetiranju podmreža mora podržati najmanje 12 iskoristivih hostova. Na crtu upiši najmanji odgovarajući CIDR zapis.",open:true,a:"/28"},
+  {t:"Zadana je subnet maska 255.255.255.240. Na crtu upiši block size.",open:true,a:"16"},
+  {t:"Mreža 192.168.1.0/24 je subnetirana s maskom /27. Koliko podmreža nastaje?",open:true,a:"8"},
+];
+
+function shuffle(arr) {
+  const a=[...arr];
+  for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}
+  return a;
+}
+
+let questions, current, score, history;
+
+function init() {
+  questions = shuffle(ALL_QUESTIONS);
+  current = 0; score = 0; history = [];
+  document.getElementById('results').classList.remove('show');
+  document.getElementById('questionCard').style.display = 'block';
+  document.getElementById('reviewSection').classList.remove('show');
+  document.getElementById('reviewToggleBtn').textContent = 'Pregledaj odgovore';
+  renderQuestion();
+}
+
+function qTextHtml(text) {
+  const lines = text.split('\n');
+  let html = '';
+  lines.forEach((line,i) => {
+    if(i===0) html += line;
+    else if(line.match(/^[01]+\.[01]+/)) html += `<span class="mono-block">${line}</span>`;
+    else html += '\n' + line;
+  });
+  return html;
+}
+
+function renderQuestion() {
+  const q = questions[current];
+  const total = questions.length;
+  const saved = history[current];
+
+  document.getElementById('progressFill').style.width = ((current/total)*100)+'%';
+  document.getElementById('progressText').textContent = `Pitanje ${current+1} / ${total}`;
+  document.getElementById('scoreText').textContent = score;
+  document.getElementById('qNumber').textContent = `PITANJE ${String(current+1).padStart(2,'0')}`;
+
+  // Prev button
+  current > 0 ? document.getElementById('prevBtn').classList.add('show') : document.getElementById('prevBtn').classList.remove('show');
+
+  // Next button
+  const nextBtn = document.getElementById('nextBtn');
+  nextBtn.textContent = current === total-1 ? 'Završi kviz →' : 'Sljedeće pitanje →';
+  saved ? nextBtn.classList.add('show') : nextBtn.classList.remove('show');
+
+  // Animate card
+  const card = document.getElementById('questionCard');
+  card.style.animation = 'none'; card.offsetHeight; card.style.animation = '';
+
+  document.getElementById('qText').innerHTML = qTextHtml(q.t);
+
+  const feedback = document.getElementById('feedback');
+  feedback.className = 'feedback';
+  const body = document.getElementById('qBody');
+  body.innerHTML = '';
+
+  if(q.open) {
+    const wrap = document.createElement('div');
+    wrap.className = 'open-answer';
+    const inp = document.createElement('input');
+    inp.type = 'text'; inp.placeholder = 'Upiši odgovor...'; inp.id = 'openInput';
+    const btn = document.createElement('button');
+    btn.className = 'submit-btn'; btn.textContent = 'Provjeri';
+
+    if(saved) {
+      inp.value = saved.chosen; inp.disabled = true; btn.disabled = true;
+      inp.classList.add(saved.correct ? 'correct' : 'wrong');
+      showFeedback(feedback, saved.correct, q.a);
+    } else {
+      inp.onkeydown = e => { if(e.key==='Enter') checkOpen(q, inp, btn, feedback); };
+      btn.onclick = () => checkOpen(q, inp, btn, feedback);
+      setTimeout(()=>inp.focus(), 100);
+    }
+    wrap.appendChild(inp); wrap.appendChild(btn); body.appendChild(wrap);
+  } else {
+    const div = document.createElement('div');
+    div.className = 'options';
+    ['A','B','C','D'].forEach((letter, i) => {
+      const btn = document.createElement('button');
+      btn.className = 'option';
+      btn.innerHTML = `<span class="option-letter">${letter}</span><span>${q.o[i]}</span>`;
+      if(saved) {
+        btn.classList.add('disabled');
+        if(i === q.a) btn.classList.add('correct');
+        if(i === saved.chosen && i !== q.a) btn.classList.add('wrong');
+      } else {
+        btn.onclick = () => checkMC(i, q, feedback);
+      }
+      div.appendChild(btn);
+    });
+    body.appendChild(div);
+    if(saved) showFeedback(feedback, saved.correct, q.open ? q.a : q.o[q.a]);
+  }
+}
+
+function showFeedback(el, correct, correctAnswer) {
+  if(correct) {
+    el.className = 'feedback ok show'; el.textContent = '✓ Točno!';
+  } else {
+    el.className = 'feedback bad show'; el.textContent = `✗ Netočno. Točan odgovor: ${correctAnswer}`;
+  }
+}
+
+function checkMC(chosen, q, feedback) {
+  if(history[current]) return;
+  document.querySelectorAll('.option').forEach((o,i) => {
+    o.classList.add('disabled'); o.onclick = null;
+    if(i === q.a) o.classList.add('correct');
+    if(i === chosen && i !== q.a) o.classList.add('wrong');
+  });
+  const correct = chosen === q.a;
+  if(correct) score++;
+  history[current] = { chosen, correct };
+  document.getElementById('scoreText').textContent = score;
+  showFeedback(feedback, correct, q.o[q.a]);
+  const nextBtn = document.getElementById('nextBtn');
+  nextBtn.textContent = current === questions.length-1 ? 'Završi kviz →' : 'Sljedeće pitanje →';
+  nextBtn.classList.add('show');
+}
+
+function checkOpen(q, inp, btn, feedback) {
+  if(history[current]) return;
+  const val = inp.value.trim();
+  if(!val) return;
+  inp.disabled = true; btn.disabled = true;
+  const correct = val.toLowerCase() === q.a.toLowerCase();
+  if(correct) score++;
+  inp.classList.add(correct ? 'correct' : 'wrong');
+  history[current] = { chosen: val, correct };
+  document.getElementById('scoreText').textContent = score;
+  showFeedback(feedback, correct, q.a);
+  const nextBtn = document.getElementById('nextBtn');
+  nextBtn.textContent = current === questions.length-1 ? 'Završi kviz →' : 'Sljedeće pitanje →';
+  nextBtn.classList.add('show');
+}
+
+function nextQuestion() {
+  current++;
+  if(current >= questions.length) { showResults(); return; }
+  renderQuestion(); window.scrollTo(0,0);
+}
+
+function prevQuestion() {
+  if(current > 0) { current--; renderQuestion(); window.scrollTo(0,0); }
+}
+
+function showResults() {
+  document.getElementById('questionCard').style.display = 'none';
+  document.getElementById('nextBtn').classList.remove('show');
+  document.getElementById('prevBtn').classList.remove('show');
+  document.getElementById('progressFill').style.width = '100%';
+  const pct = Math.round((score/questions.length)*100);
+  document.getElementById('finalScore').textContent = `${score}/${questions.length}`;
+  const msg = pct>=90 ? '🏆 Odlično! Spreman/na za kolokvij!' :
+               pct>=70 ? '👍 Dobro! Još malo ponavljanja i bit će savršeno.' :
+               pct>=50 ? '📚 Polovica! Prolazi još jednom kroz gradivo.' :
+                         '💪 Vježba čini majstora. Ponovi i probaj opet!';
+  document.getElementById('finalMsg').textContent = msg;
+  document.getElementById('results').classList.add('show');
+  window.scrollTo(0,0);
+}
+
+let reviewVisible = false;
+function toggleReview() {
+  reviewVisible = !reviewVisible;
+  const sec = document.getElementById('reviewSection');
+  const btn = document.getElementById('reviewToggleBtn');
+  if(reviewVisible) {
+    buildReview();
+    sec.classList.add('show');
+    btn.textContent = 'Sakrij pregled';
+  } else {
+    sec.classList.remove('show');
+    btn.textContent = 'Pregledaj odgovore';
+  }
+}
+
+function buildReview() {
+  const list = document.getElementById('reviewList');
+  list.innerHTML = '';
+  const letters = ['A','B','C','D'];
+  questions.forEach((q, i) => {
+    const h = history[i];
+    const ok = h && h.correct;
+    const item = document.createElement('div');
+    item.className = `review-item ${ok ? 'ok' : 'bad'}`;
+
+    const status = document.createElement('div');
+    status.className = `review-status ${ok ? 'ok' : 'bad'}`;
+    status.textContent = ok ? `✓  PITANJE ${i+1} — Točno` : `✗  PITANJE ${i+1} — Netočno`;
+    item.appendChild(status);
+
+    const qEl = document.createElement('div');
+    qEl.className = 'review-q';
+    qEl.innerHTML = qTextHtml(q.t);
+    item.appendChild(qEl);
+
+    const ans = document.createElement('div');
+    ans.className = 'review-answers';
+
+    const correctEl = document.createElement('div');
+    correctEl.className = 'review-correct-ans';
+    correctEl.textContent = q.open ? `✓ Točan odgovor: ${q.a}` : `✓ Točan odgovor: ${letters[q.a]}. ${q.o[q.a]}`;
+    ans.appendChild(correctEl);
+
+    if(h && !h.correct) {
+      const wrongEl = document.createElement('div');
+      wrongEl.className = 'review-wrong-ans';
+      wrongEl.textContent = q.open
+        ? `✗ Tvoj odgovor: ${h.chosen}`
+        : `✗ Tvoj odgovor: ${letters[h.chosen]}. ${q.o[h.chosen]}`;
+      ans.appendChild(wrongEl);
+    }
+    item.appendChild(ans);
+    list.appendChild(item);
+  });
+}
+
+function restart() {
+  reviewVisible = false;
+  init(); window.scrollTo(0,0);
+}
+
+init();
+</script>
+</body>
+</html>
