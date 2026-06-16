@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kviz — Usmjeravanje i mrežni protokoli</title>
+<style>
+  :root{
+    --bg-deep:#070d16;
+    --bg-panel:#0d1a2b;
+    --bg-panel-2:#10213a;
+    --line:#1d3450;
+    --line-bright:#2a4a6e;
+    --ink:#dce8f5;
+    --ink-dim:#7b93ad;
+    --cyan:#3ddcd4;
+    --cyan-dim:#1f6e6a;
+    --amber:#f0a830;
+    --bad:#e8584a;
+    --ok:#3ddcd4;
+    --mono: "JetBrains Mono", "IBM Plex Mono", "Consolas", monospace;
+    --sans: "Inter", "Segoe UI", sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg-deep);
+    color:var(--ink);
+    font-family:var(--sans);
+    min-height:100vh;
+    position:relative;
+    overflow-x:hidden;
+  }
+
+  #netCanvas{
+    position:fixed;
+    top:0; left:0;
+    width:100%; height:100%;
+    z-index:0;
+    opacity:.55;
+  }
+  body::after{
+    content:"";
+    position:fixed; inset:0;
+    background:radial-gradient(circle at 50% 0%, rgba(7,13,22,0) 0%, var(--bg-deep) 78%);
+    z-index:1;
+    pointer-events:none;
+  }
+
+  .wrap{
+    max-width:760px;
+    margin:0 auto;
+    padding:36px 24px 80px;
+    position:relative;
+    z-index:2;
+  }
+
+  /* ---------- HEADER ---------- */
+  header{
+    border-bottom:1px solid var(--line);
+    padding-bottom:18px;
+    margin-bottom:28px;
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    flex-wrap:wrap;
+    gap:8px;
+  }
+  .brand{
+    font-family:var(--mono);
+    text-transform:uppercase;
+    letter-spacing:.14em;
+    font-size:11px;
+    color:var(--cyan);
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .led{
+    width:7px; height:7px;
+    border-radius:50%;
+    background:var(--cyan);
+    box-shadow:0 0 6px 1px var(--cyan);
+    animation:blink 2.4s infinite ease-in-out;
+    flex-shrink:0;
+  }
+  @keyframes blink{ 0%,100%{opacity:1;} 50%{opacity:.25;} }
+
+  h1{
+    font-size:clamp(26px,5vw,36px);
+    margin:6px 0 0;
+    line-height:1.08;
+    font-weight:700;
+    letter-spacing:-.01em;
+    color:#f1f6fb;
+  }
+  .tagline{
+    font-family:var(--mono);
+    font-size:12px;
+    color:var(--ink-dim);
+    margin-top:6px;
+  }
+  .progress-readout{
+    font-family:var(--mono);
+    font-size:12.5px;
+    text-align:right;
+    color:var(--ink-dim);
+    white-space:nowrap;
+  }
+  .progress-readout strong{ color:var(--cyan); font-size:17px; }
+
+  /* ---------- PROGRESS BAR ---------- */
+  .track{
+    height:3px;
+    background:var(--bg-panel);
+    border:none;
+    margin-bottom:34px;
+    position:relative;
+    overflow:hidden;
+  }
+  .fill{
+    position:absolute; left:0; top:0; bottom:0;
+    background:var(--cyan);
+    box-shadow:0 0 10px var(--cyan);
+    width:0%;
+    transition:width .35s ease;
+  }
+
+  /* ---------- SCREENS ---------- */
+  .screen{ display:none; }
+  .screen.active{ display:block; }
+
+  /* START SCREEN */
+  .start-card{
+    border:1px solid var(--line);
+    padding:32px 28px;
+    background:var(--bg-panel);
+    position:relative;
+  }
+  .corner{
+    position:absolute;
+    width:14px; height:14px;
+    border:1.5px solid var(--cyan-dim);
+  }
+  .corner.tl{ top:-1px; left:-1px; border-right:none; border-bottom:none; }
+  .corner.br{ bottom:-1px; right:-1px; border-left:none; border-top:none; }
+
+  .start-card h2{ margin-top:0; font-size:21px; color:#f1f6fb; font-weight:700; }
+  .start-card p{ color:var(--ink-dim); line-height:1.65; font-size:15px; }
+  .meta-row{
+    display:flex; gap:28px; margin:22px 0;
+    font-family:var(--mono); font-size:11.5px;
+    color:var(--ink-dim);
+    text-transform:uppercase;
+    letter-spacing:.06em;
+  }
+  .meta-row div span{ display:block; font-family:var(--mono); font-size:21px; color:var(--cyan); margin-top:4px; text-transform:none; letter-spacing:0;}
+
+  button{
+    font-family:var(--mono);
+    cursor:pointer;
+  }
+  .btn{
+    display:inline-flex; align-items:center; gap:10px;
+    background:var(--cyan);
+    color:#04201d;
+    border:none;
+    padding:13px 24px;
+    font-size:13px;
+    font-weight:700;
+    letter-spacing:.04em;
+    text-transform:uppercase;
+    transition:background .15s, box-shadow .15s;
+  }
+  .btn:hover{ background:#5ce8e1; box-shadow:0 0 18px rgba(61,220,212,.4); }
+  .btn.secondary{
+    background:transparent;
+    color:var(--ink);
+    border:1px solid var(--line-bright);
+  }
+  .btn.secondary:hover{ border-color:var(--cyan); color:var(--cyan); box-shadow:none; background:transparent; }
+  .btn:disabled{ opacity:.35; cursor:not-allowed; box-shadow:none; }
+
+  select{
+    margin-top:8px; font-family:var(--mono); font-size:13.5px; padding:10px 12px;
+    border:1px solid var(--line-bright); background:var(--bg-panel-2); color:var(--ink);
+  }
+  select:focus{ outline:1px solid var(--cyan); }
+  label{ font-family:var(--mono); font-size:11.5px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-dim); }
+
+  /* QUESTION SCREEN */
+  .q-eyebrow{
+    font-family:var(--mono);
+    font-size:11.5px;
+    text-transform:uppercase;
+    letter-spacing:.12em;
+    color:var(--amber);
+    margin-bottom:10px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .q-eyebrow::before{
+    content:"›";
+    color:var(--cyan-dim);
+  }
+  .q-text{
+    font-size:clamp(19px,3.2vw,24px);
+    line-height:1.35;
+    margin:0 0 26px;
+    font-weight:600;
+    color:#f1f6fb;
+  }
+  .options{ display:flex; flex-direction:column; gap:9px; }
+  .opt{
+    border:1px solid var(--line);
+    background:var(--bg-panel);
+    padding:14px 16px;
+    text-align:left;
+    font-family:var(--sans);
+    font-size:14.5px;
+    color:var(--ink);
+    display:flex;
+    gap:14px;
+    align-items:flex-start;
+    line-height:1.45;
+    transition:background .12s, border-color .12s;
+  }
+  .opt .letter{
+    font-family:var(--mono);
+    font-weight:700;
+    color:var(--cyan-dim);
+    flex-shrink:0;
+  }
+  .opt:hover:not(:disabled){ background:var(--bg-panel-2); border-color:var(--line-bright); }
+  .opt:disabled{ cursor:default; }
+
+  .opt.correct{
+    background:rgba(61,220,212,.08);
+    border-color:var(--ok);
+  }
+  .opt.correct .letter{ color:var(--ok); }
+  .opt.wrong{
+    background:rgba(232,88,74,.08);
+    border-color:var(--bad);
+  }
+  .opt.wrong .letter{ color:var(--bad); }
+  .opt.dim{ opacity:.4; }
+
+  .feedback{
+    margin-top:20px;
+    font-family:var(--mono);
+    font-size:12.5px;
+    min-height:20px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .feedback.show-ok{ color:var(--ok); }
+  .feedback.show-bad{ color:var(--bad); }
+
+  .nav-row{
+    margin-top:26px;
+    display:flex;
+    justify-content:flex-end;
+  }
+
+  /* RESULT SCREEN */
+  .result-card{
+    border:1px solid var(--line);
+    background:var(--bg-panel);
+    padding:40px 32px;
+    text-align:center;
+    position:relative;
+  }
+  .result-score{
+    font-family:var(--mono);
+    font-size:60px;
+    font-weight:700;
+    line-height:1;
+    color:var(--cyan);
+    text-shadow:0 0 24px rgba(61,220,212,.35);
+  }
+  .result-score sub{ font-size:22px; color:var(--ink-dim); font-weight:400; }
+  .result-label{
+    font-family:var(--mono);
+    text-transform:uppercase;
+    letter-spacing:.12em;
+    font-size:11px;
+    color:var(--amber);
+    margin-bottom:8px;
+  }
+  .result-note{ color:var(--ink-dim); margin:18px 0 28px; line-height:1.6; font-size:14.5px; }
+  .actions{ display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
+
+  .review-list{ margin-top:36px; text-align:left; }
+  .review-list h3{
+    font-family:var(--mono); font-size:12px; text-transform:uppercase;
+    letter-spacing:.08em; border-bottom:1px solid var(--line); padding-bottom:8px; color:var(--ink-dim);
+  }
+  .review-item{
+    padding:12px 0;
+    border-bottom:1px solid var(--line);
+    font-size:14px;
+  }
+  .review-item .rq{ font-weight:600; margin-bottom:4px; color:#f1f6fb; }
+  .review-item .ra{ font-family:var(--mono); font-size:12px; }
+  .review-item .ra.wrong{ color:var(--bad); }
+  .review-item .ra.right{ color:var(--ok); }
+
+  footer{
+    text-align:center;
+    font-family:var(--mono);
+    font-size:10.5px;
+    color:#3e5572;
+    margin-top:48px;
+    letter-spacing:.06em;
+    position:relative;
+    z-index:2;
+  }
+
+  @media (max-width:480px){
+    .meta-row{ gap:16px; flex-wrap:wrap; }
+    header{ flex-direction:column; align-items:flex-start; }
+    .progress-readout{ text-align:left; }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="netCanvas"></canvas>
+
+<div class="wrap">
+
+  <header>
+    <div>
+      <div class="brand"><span class="led"></span>NET-LAB · MODUL III · LINK UP</div>
+      <h1>Usmjeravanje &amp; protokoli</h1>
+      <div class="tagline" id="taglineText">95 pitanja u banci · redoslijed i odgovori se miješaju svaki put</div>
+    </div>
+    <div class="progress-readout" id="progressReadout"></div>
+  </header>
+
+  <div class="track"><div class="fill" id="fillBar"></div></div>
+
+  <!-- START SCREEN -->
+  <section class="screen active" id="screen-start">
+    <div class="start-card">
+      <div class="corner tl"></div><div class="corner br"></div>
+      <h2>Spreman za testiranje?</h2>
+      <p>Pitanja pokrivaju usmjernike, statičko i dinamičko usmjeravanje (OSPF, RIP), te osnovne mrežne protokole i naredbe iz CLI-a. Svako pokretanje izvlači nasumičan skup pitanja iz banke od 95, a ponuđeni odgovori se miješaju.</p>
+
+      <div class="meta-row">
+        <div>broj pitanja<span id="qCountLabel">15</span></div>
+        <div>ukupna banka<span>95</span></div>
+        <div>format<span>4 opcije</span></div>
+      </div>
+
+      <div style="margin-bottom:22px;">
+        <label for="qCountSelect">Koliko pitanja želiš?</label><br>
+        <select id="qCountSelect">
+          <option value="10">10 pitanja — brzi krug</option>
+          <option value="15" selected>15 pitanja — standardno</option>
+          <option value="25">25 pitanja — temeljito</option>
+          <option value="95">95 pitanja — cijela banka</option>
+        </select>
+      </div>
+
+      <button class="btn" id="startBtn">Pokreni kviz →</button>
+    </div>
+  </section>
+
+  <!-- QUESTION SCREEN -->
+  <section class="screen" id="screen-quiz">
+    <div class="q-eyebrow" id="qEyebrow">Pitanje 1</div>
+    <div class="q-text" id="qText"></div>
+    <div class="options" id="qOptions"></div>
+    <div class="feedback" id="qFeedback"></div>
+    <div class="nav-row">
+      <button class="btn" id="nextBtn" disabled>Dalje →</button>
+    </div>
+  </section>
+
+  <!-- RESULT SCREEN -->
+  <section class="screen" id="screen-result">
+    <div class="result-card">
+      <div class="result-label">Rezultat</div>
+      <div class="result-score"><span id="scoreNum">0</span><sub> / <span id="scoreTotal">0</span></sub></div>
+      <p class="result-note" id="resultNote"></p>
+      <div class="actions">
+        <button class="btn" id="retryBtn">Ponovi kviz</button>
+        <button class="btn secondary" id="reviewBtn">Pregledaj odgovore</button>
+      </div>
+      <div class="review-list" id="reviewList" style="display:none;"></div>
+    </div>
+  </section>
+
+  <footer>RADI POTPUNO LOKALNO — BEZ INTERNETA, BEZ SLANJA PODATAKA</footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  const canvas = document.getElementById('netCanvas');
+  const ctx = canvas.getContext('2d');
+  let w, h, nodes;
+
+  function resize(){
+    w = canvas.width = window.innerWidth;
+    h = canvas.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  const COUNT = Math.max(18, Math.floor((window.innerWidth * window.innerHeight) / 38000));
+  nodes = Array.from({length: COUNT}, () => ({
+    x: Math.random()*w,
+    y: Math.random()*h,
+    vx: (Math.random()-0.5)*0.18,
+    vy: (Math.random()-0.5)*0.18,
+    r: Math.random()*1.6 + 1
+  }));
+
+  const LINK_DIST = 165;
+
+  function step(){
+    ctx.clearRect(0,0,w,h);
+
+    for(const n of nodes){
+      n.x += n.vx; n.y += n.vy;
+      if(n.x < 0 || n.x > w) n.vx *= -1;
+      if(n.y < 0 || n.y > h) n.vy *= -1;
+    }
+
+    for(let i=0;i<nodes.length;i++){
+      for(let j=i+1;j<nodes.length;j++){
+        const a = nodes[i], b = nodes[j];
+        const dx = a.x-b.x, dy = a.y-b.y;
+        const dist = Math.sqrt(dx*dx+dy*dy);
+        if(dist < LINK_DIST){
+          const alpha = (1 - dist/LINK_DIST) * 0.35;
+          ctx.strokeStyle = `rgba(61,220,212,${alpha})`;
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(a.x,a.y);
+          ctx.lineTo(b.x,b.y);
+          ctx.stroke();
+        }
+      }
+    }
+
+    for(const n of nodes){
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, n.r, 0, Math.PI*2);
+      ctx.fillStyle = 'rgba(61,220,212,0.65)';
+      ctx.fill();
+    }
+
+    requestAnimationFrame(step);
+  }
+  step();
+})();
+</script>
+
+<script>
+const PITANJA = [
+  { p: "Na kojem sloju OSI modela radi usmjernik?", t: "Mrežnom sloju (Layer 3)", k: ["Podatkovnom sloju", "Fizičkom sloju", "Mrežnom sloju (Layer 3)", "Aplikacijskom sloju"] },
+  { p: "Koje su funkcije usmjernika?", t: "Preusmjerava pakete između mreža", k: ["Preusmjerava pakete između mreža", "Filtrira MAC adrese unutar mreže", "Pojačava signal na duljim kabelima", "Sprema web stranice lokalno"] },
+  { p: "Koja je osnovna razlika između preklopnika i usmjernika?", t: "Preklopnik radi s okvirima na sloju 2, usmjernik s paketima na sloju 3", k: ["Preklopnik radi s okvirima na sloju 2, usmjernik s paketima na sloju 3", "Preklopnik je brži jer radi na sloju 3", "Usmjernik nema IP adresu, preklopnik ima", "Nema razlike, to su sinonimi"] },
+  { p: "Što je zadani pristupnik (default gateway) računala?", t: "IP adresa usmjernika koja se koristi kao izlaz iz lokalne mreže", k: ["IP adresa usmjernika koja se koristi kao izlaz iz lokalne mreže", "MAC adresa najbližeg preklopnika", "Adresa DNS servera", "Adresa DHCP servera"] },
+  { p: "Kada računalo šalje paket zadanom pristupniku?", t: "Kada je odredište izvan lokalne mreže", k: ["Kada je odredište izvan lokalne mreže", "Uvijek, za svaki paket", "Samo kod slanja e-maila", "Nikad, samo preklopnik to radi"] },
+  { p: "Koja je prednost konzolnog pristupa uređaju?", t: "Štiti udaljeni pristup (fizički pristup je potreban)", k: ["Štiti udaljeni pristup (fizički pristup je potreban)", "Brži je od mrežnog pristupa", "Radi i bez napajanja uređaja", "Ne treba lozinku"] },
+  { p: "Zašto je SSH sigurniji od Telnet-a?", t: "Šifrira komunikaciju za udaljeni pristup", k: ["Šifrira komunikaciju za udaljeni pristup", "Koristi UDP umjesto TCP", "Radi samo na konzoli", "Ne treba korisničko ime"] },
+  { p: "Koja naredba ulazi u privilegirani EXEC način?", t: "enable", k: ["enable", "configure terminal", "login", "exit"] },
+  { p: "Koja naredba ulazi u globalni konfiguracijski način?", t: "configure terminal", k: ["configure terminal", "enable", "show running-config", "hostname"] },
+  { p: "Koja naredba mijenja naziv uređaja u R1?", t: "hostname R1", k: ["hostname R1", "name R1", "set hostname R1", "rename R1"] },
+  { p: "Koja naredba uključuje šifriranje lozinki u konfiguraciji?", t: "service password-encryption", k: ["service password-encryption", "enable secret", "encrypt password", "password-protect all"] },
+  { p: "Koja naredba stvara poruku upozorenja pri pristupu uređaju?", t: "banner motd", k: ["banner motd", "login banner", "message warning", "show banner"] },
+  { p: "Koja je naredba za ulazak u konfiguraciju konzolne linije?", t: "line console 0", k: ["line console 0", "console line 0", "interface console 0", "configure console 0"] },
+  { p: "Koja naredba omogućuje provjeru lozinke na liniji?", t: "login", k: ["login", "password", "enable", "authenticate"] },
+  { p: "Koja je naredba za ulazak u konfiguraciju VTY linija 0 do 4?", t: "line vty 0 4", k: ["line vty 0 4", "vty line 0 4", "interface vty 0 4", "console vty 0 4"] },
+  { p: "Koje naredbe na VTY linijama dopuštaju isključivo SSH?", t: "transport input ssh", k: ["transport input ssh", "transport output ssh", "enable ssh only", "ssh input allow"] },
+  { p: "Koja naredba ulazi u konfiguraciju sučelja GigabitEthernet0/0?", t: "interface GigabitEthernet0/0", k: ["interface GigabitEthernet0/0", "line GigabitEthernet0/0", "config GigabitEthernet0/0", "port GigabitEthernet0/0"] },
+  { p: "Koja naredba dodjeljuje sučelju adresu 192.168.1.1/24?", t: "ip address 192.168.1.1 255.255.255.0", k: ["ip address 192.168.1.1 255.255.255.0", "set ip 192.168.1.1/24", "address ip 192.168.1.1 24", "network 192.168.1.1 255.255.255.0"] },
+  { p: "Koja naredba administrativno uključuje sučelje?", t: "no shutdown", k: ["no shutdown", "shutdown", "enable interface", "interface up"] },
+  { p: "Koja naredba prikazuje kratak pregled IP adresa i statusa sučelja?", t: "show ip interface brief", k: ["show ip interface brief", "show interfaces", "show ip route", "show running-config"] },
+  { p: "Gdje se nalazi running-config i može li se izgubiti nakon ponovnog pokretanja?", t: "Da, nalazi se u RAM-u i može se izgubiti", k: ["Da, nalazi se u RAM-u i može se izgubiti", "Ne, sprema se trajno u flash memoriju", "Nalazi se na udaljenom serveru", "Nikad se ne gubi, čak i bez spremanja"] },
+  { p: "Koja naredba sprema aktivnu konfiguraciju kao početnu konfiguraciju?", t: "copy running-config startup-config", k: ["copy running-config startup-config", "save startup-config", "write running-config", "copy startup-config running-config"] },
+  { p: "Koja naredba briše spremljenu početnu konfiguraciju?", t: "erase startup-config", k: ["erase startup-config", "delete running-config", "format startup-config", "reset startup-config"] },
+  { p: "Što se dogodi ako usmjernik nema odgovarajuću rutu za paket?", t: "Paket se odbacuje i šalje se ICMP poruka \"destination host unreachable\"", k: ["Paket se odbacuje i šalje se ICMP poruka \"destination host unreachable\"", "Paket se šalje na sva sučelja (broadcast)", "Paket čeka u redu dok se ruta ne pojavi", "Paket se vraća pošiljatelju nepromijenjen"] },
+  { p: "Koja ruta ima prednost kod usmjeravanja?", t: "Ruta s manjom administrativnom distancom (AD)", k: ["Ruta s manjom administrativnom distancom (AD)", "Ruta s većom administrativnom distancom", "Najduža ruta", "Ruta koja je zadnja unesena"] },
+  { p: "Kada je statičko usmjeravanje prikladno?", t: "Mala mreža, jedan izlaz, stabilna topologija, puna kontrola administratora", k: ["Mala mreža, jedan izlaz, stabilna topologija, puna kontrola administratora", "Velika mreža s čestim promjenama topologije", "Kada nema administratora", "Samo za bežične mreže"] },
+  { p: "Tko unosi statičke rute?", t: "Administrator ih unosi ručno", k: ["Administrator ih unosi ručno", "Automatski ih generira protokol", "DHCP server ih dodjeljuje", "Generiraju se nasumično"] },
+  { p: "Koja naredba na R1 dodaje statičku rutu prema 192.168.2.0/24 preko 10.0.0.2?", t: "ip route 192.168.2.0 255.255.255.0 10.0.0.2", k: ["ip route 192.168.2.0 255.255.255.0 10.0.0.2", "ip route 10.0.0.2 255.255.255.0 192.168.2.0", "route add 192.168.2.0/24 10.0.0.2", "static route 192.168.2.0 10.0.0.2"] },
+  { p: "Treba li postojati povratna ruta za uspješnu komunikaciju?", t: "Da, mora postojati i povratna ruta", k: ["Da, mora postojati i povratna ruta", "Ne, dovoljna je samo ruta u jednom smjeru", "Samo za UDP promet", "Samo kod OSPF-a"] },
+  { p: "Koja naredba postavlja zadanu rutu preko adrese 10.0.0.2?", t: "ip route 0.0.0.0 0.0.0.0 10.0.0.2", k: ["ip route 0.0.0.0 0.0.0.0 10.0.0.2", "ip route default 10.0.0.2", "default-route 10.0.0.2", "ip gateway 10.0.0.2"] },
+  { p: "Kada se koristi zadana ruta (default route)?", t: "Kada ne postoji specifična ruta za odredište", k: ["Kada ne postoji specifična ruta za odredište", "Samo kod statičkog usmjeravanja", "Kada je mreža premala za rutiranje", "Nikad se ne koristi u praksi"] },
+  { p: "Koja naredba prikazuje tablicu usmjeravanja?", t: "show ip route", k: ["show ip route", "show routing table", "show ip table", "display route"] },
+  { p: "Koja naredba prikazuje samo statičke rute?", t: "show ip route static", k: ["show ip route static", "show ip route only-static", "show static routes", "show ip static"] },
+  { p: "Koja naredba provjerava dostupnost uređaja 192.168.2.10?", t: "ping 192.168.2.10", k: ["ping 192.168.2.10", "traceroute 192.168.2.10", "show ip 192.168.2.10", "check 192.168.2.10"] },
+  { p: "Koja naredba prikazuje put do uređaja 192.168.2.10?", t: "traceroute 192.168.2.10", k: ["traceroute 192.168.2.10", "ping 192.168.2.10", "show path 192.168.2.10", "show ip route 192.168.2.10"] },
+  { p: "Koji je uzrok statusa \"administratively down\" na sučelju?", t: "Nedostaje naredba \"no shutdown\"", k: ["Nedostaje naredba \"no shutdown\"", "Sučelje nema IP adresu", "Kabel je prekinut", "Pogrešna subnet maska"] },
+  { p: "Ping dolazi do odredišta, ali odgovor se ne vraća. Koji je najvjerojatniji problem?", t: "Nema povratne rute", k: ["Nema povratne rute", "Pogrešna MAC adresa", "Server je isključen", "DNS ne radi"] },
+  { p: "Koja je prednost dinamičkog usmjeravanja?", t: "Lakše održavanje većih mreža i automatsko prilagođavanje promjenama", k: ["Lakše održavanje većih mreža i automatsko prilagođavanje promjenama", "Veća sigurnost od statičkog usmjeravanja", "Ne treba nikakvu konfiguraciju", "Radi samo na malim mrežama"] },
+  { p: "Koja naredba pokreće OSPF proces broj 1?", t: "router ospf 1", k: ["router ospf 1", "ospf start 1", "enable ospf 1", "interface ospf 1"] },
+  { p: "Koja naredba uključuje mrežu 192.168.1.0/24 u OSPF područje 0?", t: "network 192.168.1.0 0.0.0.255 area 0", k: ["network 192.168.1.0 0.0.0.255 area 0", "network 192.168.1.0 255.255.255.0 area 0", "area 0 network 192.168.1.0", "network 192.168.1.0/24 area0"] },
+  { p: "Koja wildcard maska odgovara mrežnoj maski /24?", t: "0.0.0.255", k: ["0.0.0.255", "255.255.255.0", "0.0.0.0", "0.0.255.255"] },
+  { p: "Koja wildcard maska odgovara mrežnoj maski /30?", t: "0.0.0.3", k: ["0.0.0.3", "255.255.255.252", "0.0.0.252", "0.0.0.0"] },
+  { p: "Koja naredba prikazuje OSPF susjede?", t: "show ip ospf neighbor", k: ["show ip ospf neighbor", "show ip ospf route", "show ip route ospf", "show ospf status"] },
+  { p: "Koja naredba prikazuje samo OSPF rute?", t: "show ip route ospf", k: ["show ip route ospf", "show ip ospf route", "show ospf only", "show route ospf-only"] },
+  { p: "Kojom je oznakom prikazana OSPF ruta u tablici usmjeravanja?", t: "O", k: ["O", "S", "C", "R"] },
+  { p: "Što je metrika u usmjeravanju?", t: "Vrijednost kojom protokol procjenjuje kvalitetu (cijenu) puta", k: ["Vrijednost kojom protokol procjenjuje kvalitetu (cijenu) puta", "Broj uređaja u mreži", "Brzina prijenosa podataka", "Veličina paketa"] },
+  { p: "Što je konvergencija u usmjeravanju?", t: "Vrijeme potrebno da svi usmjernici usklade svoje tablice rutiranja", k: ["Vrijeme potrebno da svi usmjernici usklade svoje tablice rutiranja", "Spajanje dviju mreža u jednu", "Proces enkripcije podataka", "Broj dostupnih ruta"] },
+  { p: "Što karakterizira distance-vector protokole?", t: "Poznaju udaljenost i smjer (susjeda) prema odredištu, npr. RIP", k: ["Poznaju udaljenost i smjer (susjeda) prema odredištu, npr. RIP", "Poznaju cijelu topologiju mreže", "Koriste cost metriku", "Rade samo na sloju 2"] },
+  { p: "Kojoj vrsti protokola pripada OSPF?", t: "Link-state protokol - poznaje cijelu topologiju mreže", k: ["Link-state protokol - poznaje cijelu topologiju mreže", "Distance-vector protokol", "Hibridni protokol", "Statički protokol"] },
+  { p: "Koju metriku koristi OSPF?", t: "Cost metriku - uzima u obzir kvalitetu (propusnost) veze", k: ["Cost metriku - uzima u obzir kvalitetu (propusnost) veze", "Hop count metriku", "Vremensku metriku", "Bandwidth-only metriku bez koeficijenata"] },
+  { p: "Put A ima cost 10+10, a put B ima cost 1+1. Koji put bira OSPF?", t: "Put B, jer ima manji ukupni cost (2)", k: ["Put B, jer ima manji ukupni cost (2)", "Put A, jer ima više skokova", "Oba puta jednako, OSPF radi load-balancing", "Nasumično bira jedan od puteva"] },
+  { p: "Koje su karakteristike OSPF-a?", t: "Brza konvergencija, cost metrika, podržava VLSM i CIDR, podjela na area-e", k: ["Brza konvergencija, cost metrika, podržava VLSM i CIDR, podjela na area-e", "Spora konvergencija, hop count metrika, ne podržava VLSM", "Radi samo u jednoj area-i bez podjele", "Koristi se isključivo za male mreže"] },
+  { p: "Čemu služe OSPF Hello paketi?", t: "Otkrivaju i održavaju susjedske odnose (neighbors)", k: ["Otkrivaju i održavaju susjedske odnose (neighbors)", "Šalju cijelu tablicu rutiranja", "Šifriraju OSPF komunikaciju", "Mjere brzinu veze"] },
+  { p: "Koji se parametri trebaju podudarati za uspostavu OSPF susjedstva?", t: "Area ID, subnet, Hello/Dead intervali i autentifikacija", k: ["Area ID, subnet, Hello/Dead intervali i autentifikacija", "Samo IP adresa sučelja", "Samo router ID", "Brzina sučelja (bandwidth)"] },
+  { p: "Što znači OSPF stanje \"2-Way\"?", t: "Da se dva usmjernika međusobno vide (vidljivost je dvosmjerna)", k: ["Da se dva usmjernika međusobno vide (vidljivost je dvosmjerna)", "Da je veza prekinuta", "Da koristi dva protokola istovremeno", "Da je OSPF area podijeljena na dva dijela"] },
+  { p: "Što je Area 0 u OSPF-u?", t: "Backbone (središnje) područje na koje se spajaju sve ostale area-e", k: ["Backbone (središnje) područje na koje se spajaju sve ostale area-e", "Područje rezervirano za testiranje", "Zadnja konfigurirana area", "Area koja se ne koristi u praksi"] },
+  { p: "Koja je funkcija ABR-a (Area Border Router)?", t: "Povezuje različita OSPF područja (area-e)", k: ["Povezuje različita OSPF područja (area-e)", "Filtrira MAC adrese", "Generira IP adrese DHCP-om", "Radi isključivo s RIP protokolom"] },
+  { p: "Koja naredba prikazuje informacije o aktivnim usmjerivačkim protokolima?", t: "show ip protocols", k: ["show ip protocols", "show ip route", "show running-config protocols", "show active protocols"] },
+  { p: "Što znači da je RIPv1 \"classful\"?", t: "Oslanja se na zadane klase adresa umjesto da šalje stvarnu subnet masku", k: ["Oslanja se na zadane klase adresa umjesto da šalje stvarnu subnet masku", "Radi samo s IPv6 adresama", "Šalje subnet masku u svakom ažuriranju", "Podržava samo jednu klasu uređaja"] },
+  { p: "Šalje li RIPv1 subnet masku u ažuriranjima?", t: "Ne, RIPv1 ne šalje subnet masku", k: ["Ne, RIPv1 ne šalje subnet masku", "Da, šalje ju u svakom paketu", "Šalje ju samo administratoru", "Šalje samo wildcard masku"] },
+  { p: "Zašto RIPv1 ne podržava VLSM?", t: "Jer ne šalje subnet masku, pa drugi usmjernik ne može točno odrediti podmreže", k: ["Jer ne šalje subnet masku, pa drugi usmjernik ne može točno odrediti podmreže", "Jer koristi premalu metriku", "Jer ne podržava IPv4 adrese", "Jer radi samo na jednom sučelju"] },
+  { p: "Koja naredba pokreće RIP konfiguraciju?", t: "router rip", k: ["router rip", "rip start", "enable rip", "configure rip"] },
+  { p: "Koja naredba postavlja RIP verziju 1?", t: "version 1", k: ["version 1", "rip v1", "set version rip1", "ripv1 enable"] },
+  { p: "Koju metriku koristi RIP?", t: "Hop count (broj skokova)", k: ["Hop count (broj skokova)", "Cost metriku", "Bandwidth metriku", "Delay metriku"] },
+  { p: "Što u RIP-u znači udaljenost od 16 skokova?", t: "Mreža je nedostupna (maksimalna dozvoljena udaljenost je 15)", k: ["Mreža je nedostupna (maksimalna dozvoljena udaljenost je 15)", "Mreža je optimalno udaljena", "To je zadana udaljenost za sve mreže", "Znači da je veza vrlo brza"] },
+  { p: "Koje su karakteristike RIPv2?", t: "Jednostavnost kao RIPv1, ali šalje i subnet masku (podržava VLSM)", k: ["Jednostavnost kao RIPv1, ali šalje i subnet masku (podržava VLSM)", "Koristi cost metriku kao OSPF", "Ne podržava VLSM", "Radi samo s IPv6"] },
+  { p: "Koja naredba isključuje automatsko sažimanje (auto-summary) u RIPv2?", t: "no auto-summary", k: ["no auto-summary", "disable auto-summary", "auto-summary off", "no summary"] },
+  { p: "Što je mrežni protokol?", t: "Skup pravila prema kojima mrežni uređaji razmjenjuju podatke", k: ["Skup pravila prema kojima mrežni uređaji razmjenjuju podatke", "Fizički kabel za povezivanje uređaja", "Program za nadzor mreže", "Vrsta mrežne kartice"] },
+  { p: "Što je logički mrežni port?", t: "Logički broj koji govori operativnom sustavu kojoj aplikaciji pripadaju primljeni podaci", k: ["Logički broj koji govori operativnom sustavu kojoj aplikaciji pripadaju primljeni podaci", "Fizički priključak na mrežnoj kartici", "MAC adresa uređaja", "Broj kabela u ormaru"] },
+  { p: "Što određuje IP adresa?", t: "Određuje (identificira) uređaj na mreži", k: ["Određuje (identificira) uređaj na mreži", "Određuje brzinu interneta", "Određuje vrstu kabela", "Određuje proizvođača uređaja"] },
+  { p: "Koriste li svi mrežni protokoli TCP ili UDP portove?", t: "Da, koriste jedno ili drugo", k: ["Da, koriste jedno ili drugo", "Ne, svi koriste samo TCP", "Ne, svi koriste samo UDP", "Ne, neki ne koriste ni TCP ni UDP (npr. OSPF)"] },
+  { p: "Što znači Ethernet PHY?", t: "Definira fizički prijenos Ethernet bitova", k: ["Definira fizički prijenos Ethernet bitova", "Definira logičku adresaciju mreže", "Vrsta softvera za upravljanje mrežom", "Naziv Ethernet kabela"] },
+  { p: "Što znači DSL (Digital Subscriber Line)?", t: "Tehnologija koja omogućuje spajanje na internet preko telefonske linije", k: ["Tehnologija koja omogućuje spajanje na internet preko telefonske linije", "Protokol za sigurnost mreže", "Vrsta optičkog kabela", "Naziv za bežični router"] },
+  { p: "Koja tehnologija prenosi podatke svjetlosnim impulsima?", t: "Optika (optička vlakna)", k: ["Optika (optička vlakna)", "Bakreni kabel (UTP)", "Koaksijalni kabel", "Bežični signal"] },
+  { p: "Što znači ARP (Address Resolution Protocol)?", t: "Povezuje poznatu IPv4 adresu s MAC adresom", k: ["Povezuje poznatu IPv4 adresu s MAC adresom", "Dodjeljuje IP adrese automatski", "Šifrira mrežni promet", "Usmjerava pakete između mreža"] },
+  { p: "Što znači VLAN?", t: "Virtual Local Area Network - virtualna lokalna mreža", k: ["Virtual Local Area Network - virtualna lokalna mreža", "Virtual Link Access Network", "Variable Length Area Network", "Virtual LAN Address Notation"] },
+  { p: "Koje su funkcije VLAN-a?", t: "Sigurnost i organizacija mreže, smanjuju broadcast domenu", k: ["Sigurnost i organizacija mreže, smanjuju broadcast domenu", "Povećavaju broadcast domenu", "Zamjenjuju potrebu za usmjernicima", "Šifriraju sav mrežni promet"] },
+  { p: "Što znači STP (Spanning Tree Protocol)?", t: "Protokol koji sprječava petlje u mrežama s više preklopnika", k: ["Protokol koji sprječava petlje u mrežama s više preklopnika", "Protokol za usmjeravanje paketa", "Protokol za dodjelu IP adresa", "Protokol za enkripciju podataka"] },
+  { p: "Koji protokol sprječava petlje između preklopnika?", t: "STP (Spanning Tree Protocol)", k: ["STP (Spanning Tree Protocol)", "OSPF", "ARP", "DHCP"] },
+  { p: "Što znači LACP?", t: "Link Aggregation Control Protocol", k: ["Link Aggregation Control Protocol", "Local Area Control Protocol", "Logical Access Control Procedure", "Layer Aggregation Communication Path"] },
+  { p: "Koja je funkcija LACP-a?", t: "Povećava propusnost, omogućuje redundanciju i automatski dogovara članove agregatnog kanala", k: ["Povećava propusnost, omogućuje redundanciju i automatski dogovara članove agregatnog kanala", "Sprječava petlje u mreži", "Dodjeljuje IP adrese uređajima", "Šifrira komunikaciju između preklopnika"] },
+  { p: "Što znači ICMP?", t: "Internet Control Message Protocol", k: ["Internet Control Message Protocol", "Internet Connection Management Protocol", "Internal Control Message Process", "Internet Control Mapping Protocol"] },
+  { p: "Koja je funkcija ICMP-a?", t: "Prijenos kontrolnih poruka i poruka o greškama (npr. ping)", k: ["Prijenos kontrolnih poruka i poruka o greškama (npr. ping)", "Usmjeravanje paketa između mreža", "Dodjela IP adresa uređajima", "Enkripcija mrežnog prometa"] },
+  { p: "Što znači OSPF?", t: "Open Shortest Path First", k: ["Open Shortest Path First", "Open Source Shortest Path", "Optimal Switching Path Forwarding", "Open Standard Path Finder"] },
+  { p: "Što znači EIGRP?", t: "Enhanced Interior Gateway Routing Protocol", k: ["Enhanced Interior Gateway Routing Protocol", "External Interior Gateway Routing Protocol", "Enhanced Internet Gateway Routing Procedure", "Extended Interior Group Routing Protocol"] },
+  { p: "Što znači BGP?", t: "Border Gateway Protocol", k: ["Border Gateway Protocol", "Backbone Gateway Protocol", "Basic Gateway Protocol", "Bridge Gateway Protocol"] },
+  { p: "Što znači TCP?", t: "Transmission Control Protocol", k: ["Transmission Control Protocol", "Transfer Connection Protocol", "Total Control Protocol", "Transport Communication Process"] },
+  { p: "Koje su karakteristike TCP-a?", t: "Pouzdan, connection-oriented, provjerava redoslijed i potvrđuje primitak (ACK)", k: ["Pouzdan, connection-oriented, provjerava redoslijed i potvrđuje primitak (ACK)", "Nepouzdan, connectionless, bez provjere redoslijeda", "Koristi se isključivo za video streaming", "Nema zaglavlje paketa"] },
+  { p: "Što znači UDP?", t: "User Datagram Protocol", k: ["User Datagram Protocol", "Universal Data Protocol", "User Direct Protocol", "Unified Datagram Process"] },
+  { p: "Koje su karakteristike UDP-a?", t: "Ne uspostavlja vezu, ne jamči isporuku niti redoslijed, manje zaglavlje i manje kašnjenje od TCP-a", k: ["Ne uspostavlja vezu, ne jamči isporuku niti redoslijed, manje zaglavlje i manje kašnjenje od TCP-a", "Uspostavlja vezu prije slanja podataka (handshake)", "Jamči isporuku svakog paketa", "Sporiji je od TCP-a zbog provjere grešaka"] },
+  { p: "Što znači SIP?", t: "Session Initiation Protocol", k: ["Session Initiation Protocol", "Secure Internet Protocol", "Server Initiation Process", "Session Internet Protocol"] },
+  { p: "Što znači TLS?", t: "Transport Layer Security", k: ["Transport Layer Security", "Total Link Security", "Transmission Level Safety", "Transfer Layer Service"] },
+  { p: "Koje funkcije pruža TLS?", t: "Šifriranje, autentifikaciju i integritet podataka tijekom prijenosa", k: ["Šifriranje, autentifikaciju i integritet podataka tijekom prijenosa", "Usmjeravanje paketa između mreža", "Dodjelu IP adresa uređajima", "Sprječavanje petlji u mreži"] },
+  { p: "Što znači DHCP?", t: "Dynamic Host Configuration Protocol", k: ["Dynamic Host Configuration Protocol", "Direct Host Connection Protocol", "Dynamic Hardware Control Process", "Domain Host Configuration Protocol"] },
+  { p: "Koji niz pravilno prikazuje DHCP DORA postupak?", t: "Discover, Offer, Request, Acknowledge", k: ["Discover, Offer, Request, Acknowledge", "Offer, Discover, Acknowledge, Request", "Request, Offer, Discover, Acknowledge", "Discover, Request, Offer, Acknowledge"] }
+];
+</script>
+
+<script>
+(function(){
+  "use strict";
+
+  function shuffle(arr){
+    const a = arr.slice();
+    for(let i=a.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [a[i],a[j]] = [a[j],a[i]];
+    }
+    return a;
+  }
+
+  const LETTERS = ["A","B","C","D"];
+
+  let session = [];
+  let current = 0;
+  let score = 0;
+  let answered = false;
+  let userAnswers = [];
+
+  const screenStart = document.getElementById('screen-start');
+  const screenQuiz = document.getElementById('screen-quiz');
+  const screenResult = document.getElementById('screen-result');
+  const fillBar = document.getElementById('fillBar');
+  const progressReadout = document.getElementById('progressReadout');
+  const qCountSelect = document.getElementById('qCountSelect');
+  const qCountLabel = document.getElementById('qCountLabel');
+  const startBtn = document.getElementById('startBtn');
+  const qEyebrow = document.getElementById('qEyebrow');
+  const qText = document.getElementById('qText');
+  const qOptions = document.getElementById('qOptions');
+  const qFeedback = document.getElementById('qFeedback');
+  const nextBtn = document.getElementById('nextBtn');
+  const scoreNum = document.getElementById('scoreNum');
+  const scoreTotal = document.getElementById('scoreTotal');
+  const resultNote = document.getElementById('resultNote');
+  const retryBtn = document.getElementById('retryBtn');
+  const reviewBtn = document.getElementById('reviewBtn');
+  const reviewList = document.getElementById('reviewList');
+
+  qCountSelect.addEventListener('change', () => {
+    qCountLabel.textContent = qCountSelect.value;
+  });
+
+  function showScreen(id){
+    [screenStart, screenQuiz, screenResult].forEach(s=>s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+  }
+
+  function buildSession(n){
+    const pool = shuffle(PITANJA).slice(0, n);
+    return pool.map(item => {
+      const opts = shuffle(item.k).map(text => ({ text, correct: text === item.t }));
+      return { p: item.p, opts };
+    });
+  }
+
+  function startQuiz(){
+    const n = parseInt(qCountSelect.value, 10);
+    session = buildSession(n);
+    current = 0;
+    score = 0;
+    userAnswers = [];
+    progressReadout.style.display = '';
+    showScreen('screen-quiz');
+    renderQuestion();
+  }
+
+  function renderQuestion(){
+    answered = false;
+    nextBtn.disabled = true;
+    nextBtn.textContent = (current === session.length - 1) ? 'Završi kviz →' : 'Dalje →';
+
+    const q = session[current];
+    qEyebrow.textContent = `Pitanje ${current+1} od ${session.length}`;
+    qText.textContent = q.p;
+    qFeedback.textContent = '';
+    qFeedback.className = 'feedback';
+
+    qOptions.innerHTML = '';
+    q.opts.forEach((opt, idx) => {
+      const btn = document.createElement('button');
+      btn.className = 'opt';
+      btn.innerHTML = `<span class="letter">${LETTERS[idx]}</span><span>${opt.text}</span>`;
+      btn.addEventListener('click', () => selectOption(idx));
+      qOptions.appendChild(btn);
+    });
+
+    const pct = Math.round((current / session.length) * 100);
+    fillBar.style.width = pct + '%';
+    progressReadout.innerHTML = `<strong>${score}</strong> / ${current} točno do sada`;
+  }
+
+  function selectOption(idx){
+    if(answered) return;
+    answered = true;
+    const q = session[current];
+    const chosen = q.opts[idx];
+    const buttons = qOptions.querySelectorAll('.opt');
+
+    buttons.forEach((b, i) => {
+      b.disabled = true;
+      if(q.opts[i].correct){
+        b.classList.add('correct');
+      } else if(i === idx){
+        b.classList.add('wrong');
+      } else {
+        b.classList.add('dim');
+      }
+    });
+
+    const wasRight = chosen.correct;
+    if(wasRight){
+      score++;
+      qFeedback.textContent = '✓ Točno.';
+      qFeedback.classList.add('show-ok');
+    } else {
+      const correctText = q.opts.find(o=>o.correct).text;
+      qFeedback.textContent = `✕ Netočno — odgovor: ${correctText}`;
+      qFeedback.classList.add('show-bad');
+    }
+
+    userAnswers.push({
+      question: q.p,
+      chosenText: chosen.text,
+      correctText: q.opts.find(o=>o.correct).text,
+      wasRight
+    });
+
+    nextBtn.disabled = false;
+  }
+
+  function nextQuestion(){
+    if(!answered) return;
+    current++;
+    if(current >= session.length){
+      finishQuiz();
+    } else {
+      renderQuestion();
+    }
+  }
+
+  function finishQuiz(){
+    fillBar.style.width = '100%';
+    scoreNum.textContent = score;
+    scoreTotal.textContent = session.length;
+
+    const pct = Math.round((score/session.length)*100);
+    let note;
+    if(pct === 100) note = "Savršeno. Cijela banka pitanja je tvoja.";
+    else if(pct >= 80) note = "Vrlo solidno poznavanje gradiva.";
+    else if(pct >= 60) note = "Dobra osnova, ali vrijedi ponoviti slabije teme.";
+    else note = "Vrijedi još jednom proći gradivo pa pokušati ponovo.";
+    resultNote.textContent = `${pct}% točnih odgovora. ${note}`;
+
+    reviewList.style.display = 'none';
+    reviewList.innerHTML = '';
+    reviewBtn.textContent = 'Pregledaj odgovore';
+
+    progressReadout.style.display = 'none';
+    showScreen('screen-result');
+  }
+
+  function toggleReview(){
+    const isHidden = reviewList.style.display === 'none';
+    if(isHidden){
+      reviewList.innerHTML = '<h3>Pregled odgovora</h3>' + userAnswers.map((a,i) => `
+        <div class="review-item">
+          <div class="rq">${i+1}. ${a.question}</div>
+          <div class="ra ${a.wasRight ? 'right' : 'wrong'}">
+            ${a.wasRight ? '✓ ' + a.chosenText : '✕ tvoj odgovor: ' + a.chosenText + ' — točno: ' + a.correctText}
+          </div>
+        </div>
+      `).join('');
+      reviewList.style.display = '';
+      reviewBtn.textContent = 'Sakrij odgovore';
+    } else {
+      reviewList.style.display = 'none';
+      reviewBtn.textContent = 'Pregledaj odgovore';
+    }
+  }
+
+  startBtn.addEventListener('click', startQuiz);
+  nextBtn.addEventListener('click', nextQuestion);
+  retryBtn.addEventListener('click', () => {
+    progressReadout.style.display = '';
+    showScreen('screen-start');
+    fillBar.style.width = '0%';
+  });
+  reviewBtn.addEventListener('click', toggleReview);
+
+  progressReadout.style.display = 'none';
+})();
+</script>
+
+</body>
+</html>
