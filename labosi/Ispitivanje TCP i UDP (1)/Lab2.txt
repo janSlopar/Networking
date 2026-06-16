@@ -1,0 +1,40 @@
+Lab2
+Part 1:
+
+IP address - 192.168.1.25
+MAC - 74-4C-A1-9C-7D-D7
+Default gateway IP - 192.168.1.1
+DNS server IP - 192.168.1.1
+
+Part 2:
+Step 2:
+c.
+
+Device 		IP Address	  MAC Address
+Local PC	192.168.1.25	  74-4C-A1-9C-7D-D7
+
+Default 	192.168.1.1	  Destination: ZyxelCommuni_99:ea:10 (90:9f:22:99:ea:10)  
+gateway
+
+d.
+Frame Size - 74 bytes
+Source MAC - 74:4c:a1:9c:7d:d7
+Destination MAC - 90:9f:22:99:ea:10
+Source IP 192.168.1.25
+Destination IP 192.168.1.1
+Source Port 58284
+Destination Port - 53
+
+
+Step 3:
+b. From what device is the source MAC address and what device is the destination MAC address?
+Source MAC je od default gatewaya (router), Destination MAC je od lokalnog PC-a
+
+c. Destination IP address i Source IP address:
+
+Destination IP: tvoja IP adresa (lokalnog PC-a)
+
+Source IP: IP adresa DNS servera (default gateway)
+What happened to the roles of source and destination?
+
+Uloge su se zamijenile — što je prije bio source sada je destination i obrnuto

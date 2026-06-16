@@ -1,0 +1,91 @@
+Lab3
+
+Part2
+Step1:
+
+b) PDU-ovi koji su "nestali" su zapravo stigli na svoje odredište (server ih je primio i obradio) — switch ih je proslijedio dalje prema odgovarajućem klijentu…b) PDU-ovi koji su "nestali" su zapravo stigli na svoje odredište (server ih je primio i obradio) — switch ih je proslijedio dalje prema odgovarajućem klijentu/serveru, pa ih više ne vidiš na originalnoj žici.
+
+c) Ovo se zove multiplexing (multipleksiranje) — sposobnost mreže da istovremeno prenosi više različitih komunikacija/protokola preko istog fizičkog medija, pri čemu svaki segment ima samo jedan PDU na žici u danom trenutku u jednom smjeru.
+
+d) PDU-ovi su različitih boja jer predstavljaju različite protokole (HTTP, FTP, DNS, TCP, UDP)
+
+Step2:
+
+c) Sekcija je označena TCP. Da, ove komunikacije se smatraju pouzdanima (reliable) jer TCP koristi mehanizme potvrde primitka (acknowledgment) i provjere redoslijeda paketa.
+d) Tipične vrijednosti (mogu se razlikovati ovisno o simulaciji):
+
+SRC PORT: 1025
+DEST PORT: 80
+SEQUENCE NUM: 0
+ACK NUM: 0
+Polje lijevo od WINDOW: SYN (flag koji označava pokušaj uspostave veze)
+
+f) Port brojevi su zamijenjeni (SRC i DEST PORT su obrnuti, pošto server odgovara klijentu), a SEQUENCE i ACK brojevi su se povećali — server potvrđuje primljeni segment i šalje svoj vlastiti sequence broj (SYN-ACK faza).
+
+h) U TCP sekciji ovog drugog Outbound PDU-a piše da je riječ o ACK flagu (klijent potvrđuje primitak servera) — port brojevi i sequence/ack brojevi su se ponovno promijenili u odnosu na prva dva PDU-a, jer je ovo treći korak three-way handshakea, nakon kojeg počinje stvarna HTTP komunikacija (GET request).
+
+Step 3:
+
+c) Sekcija je označena TCP.
+Da, ove komunikacije se smatraju pouzdanima (reliable) jer FTP koristi TCP protokol, koji osigurava isporuku podataka, potvrdu primitka (ACK) i pravilan redoslijed paketa.
+
+Da, komunikacije su pouzdane (reliable) jer FTP koristi TCP.
+d) Tipične vrijednosti:
+
+SRC PORT: ephemeral port (npr. 1026)
+DEST PORT: 21
+SEQUENCE NUM: 0
+ACK NUM: 0
+Polje lijevo od WINDOW: SYN
+
+f) Port brojevi su zamijenjeni (SRC i DEST PORT su obrnuti — server odgovara klijentu), a SEQUENCE i ACK brojevi su se povećali — server potvrđuje primljeni zahtjev i šalje svoj sequence broj (SYN-ACK faza handshakea).
+
+g) U Outbound PDU-u port brojevi i sequence/ack brojevi su se ponovno promijenili — klijent šalje ACK kojim potvrđuje primitak servera, čime se završava three-way handshake.
+
+i) Poruka sa servera je: "220 Welcome to PT FTP server" — standardna FTP poruka dobrodošlice koja se prikazuje nakon uspostave veze.
+
+Step 4:
+
+c) Sekcija je označena UDP. Ne, ove komunikacije se ne smatraju pouzdanima (unreliable) jer UDP ne garantira isporuku podataka, ne provjerava redoslijed i nema potvrdu primitka.
+
+d) Tipične vrijednosti:
+
+SRC PORT: ephemeral port (npr. 1025)
+DEST PORT: 53
+
+Nema sequence i acknowledgement broja jer UDP je connectionless protokol — ne uspostavlja vezu prije slanja podataka i ne prati koji su paketi primljeni, pa mu ti brojevi nisu potrebni.
+
+f) SRC i DEST PORT su zamijenjeni — server odgovara s porta 53 prema klijentovom ephemeral portu.
+
+g) Zadnja sekcija PDU-a zove se DNS.
+
+Step 5:
+
+c) Email promet koristi TCP kao transportni protokol. Da, komunikacije se smatraju pouzdanima (reliable) jer TCP osigurava potvrdu primitka i pravilan redoslijed podataka.
+
+d) Tipične vrijednosti:
+
+SRC PORT: ephemeral port (npr. 1027)
+DEST PORT: 25 (SMTP)
+SEQUENCE NUM: 0
+ACK NUM: 0
+Polje lijevo od WINDOW: SYN
+
+f) Port brojevi su zamijenjeni (server odgovara klijentu), a SEQUENCE i ACK brojevi su se povećali — server potvrđuje primljeni zahtjev (SYN-ACK faza handshakea).
+
+g) Port brojevi i sequence/ack brojevi su se ponovno promijenili — klijent šalje ACK kojim potvrđuje primitak, čime se završava three-way handshake.
+
+i) Port brojevi i sequence/ack brojevi su drugačiji od prethodna dva PDU-a jer ovo predstavlja stvarni početak SMTP komunikacije (slanje emaila), nakon što je handshake završen — sequence broj se nastavlja iz prethodne faze.
+
+j)
+
+TCP port 25 → SMTP (Simple Mail Transfer Protocol) — koristi se za slanje emaila
+TCP port 110 → POP3 (Post Office Protocol v3) — koristi se za primanje emaila
+
+Step 6:
+
+b) Protokol u lijevoj koloni: TCP
+Port brojevi koje server koristi: 21 (FTP), 25 (SMTP), 80 (HTTP), 110 (POP3) — DNS se ne prikazuje jer koristi UDP, ne TCP.
+c) Sesije su u stanju ESTABLISHED (uspostavljene/aktivne TCP veze).
+d) Veza koja ostaje ESTABLISHED je obično za HTTP ili FTP servis — ovisno koji je klijentski prozor ostao minimiziran, a ne zatvoren.
+Razlog zašto se ta sesija ne zatvara kao ostale: klijentska aplikacija (npr. web browser ili FTP klijent) je samo minimizirana, ne zatvorena — TCP veza ostaje aktivna sve dok korisnik ne zatvori aplikaciju, jer aplikacija još "drži" otvorenu konekciju sa serverom.

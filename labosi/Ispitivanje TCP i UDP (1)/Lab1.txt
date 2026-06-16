@@ -1,0 +1,42 @@
+Lab1
+
+Part 1:
+Step 1:
+b. 
+192.168.1.25
+74-4C-A1-9C-7D-D7
+
+Part 2:
+Step 2:
+a.
+IP DNS 192.168.1.1
+c.
+142.251.38.202
+
+Step 3:
+c.
+What is the TCP source port number? 49523
+How would you classify the source port? broj veći od 1023
+What is the TCP destination port number? 443
+How would you classify the destination port? broj manji od 1024
+Which flag (or flags) is set? SYN
+What is the relative sequence number set to? 0
+
+d.
+Source port: 9037
+Destination port: 443
+What flags are set? 0x002(SYN, ACK)
+
+Sequence number: 1
+Acknowledgment number: 1
+
+e.
+Which flag (or flags) is set? ACK
+
+
+1. Which three filters in the list might be the most useful to a network administrator? tcp, dns, http
+
+2. What other ways could Wireshark be used in a production network?
+Wireshark se može koristiti za rješavanje problema s mrežnom vezom, otkrivanje neovlaštenog prometa na mreži te analizu performansi mreže.
+
+		
